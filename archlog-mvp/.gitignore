@@ -1,0 +1,34 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+.env
+.DS_Store
+dist
+*.local
+
+# Editor directories and files
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# 环境变量文件（极其重要，绝不上传）
+.env
+.env.*
+
+# 你的个人开发日志
+DEV_LOG.md
+
+# 下面这些通常是脚手架默认帮你忽略的，确认一下有没有
+node_modules/
+dist/
+unpackage/
