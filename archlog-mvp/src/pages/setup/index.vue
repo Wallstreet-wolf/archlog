@@ -263,16 +263,68 @@
         </view>
       </view>
     </view>
+
+    <!-- 切到历史 Tab：已录入箭支时拦截 -->
+    <view
+      v-if="showLeaveTabModal"
+      class="fixed inset-0 z-[9999] flex items-center justify-center bg-black bg-opacity-50"
+    >
+      <view class="w-4/5 rounded-lg bg-white p-6">
+        <text class="mb-2 block text-lg font-semibold text-gray-900">提示</text>
+        <text class="mb-6 block text-base text-gray-700">
+          当前已录入 {{ getRecordedArrowCount() }} 支箭，总分为 {{ totalScore }}
+        </text>
+        <view class="flex justify-end space-x-3">
+          <view
+            class="rounded bg-gray-200 px-4 py-2 text-gray-700"
+            :class="isPersistingLeave ? 'opacity-50' : ''"
+            @tap="handleLeaveTabQuit"
+          >
+            不练了
+          </view>
+          <view
+            class="rounded bg-blue-600 px-4 py-2 text-white"
+            :class="isPersistingLeave ? 'opacity-50' : ''"
+            @tap="handleLeaveTabContinueLater"
+          >
+            稍后继续练
+          </view>
+        </view>
+      </view>
+    </view>
   </view>
 </template>
 
 <script setup lang="ts">
-import { onHide, onLoad } from '@dcloudio/uni-app'
+import { onHide, onLoad, onShow } from '@dcloudio/uni-app'
 import { computed, ref } from 'vue'
+import {
+  NEED_RESET_SETUP_KEY,
+  installHistoryTabGuard,
+  navigateToHistoryTab,
+  setHistoryTabGuard,
+} from '../../utils/historyTabGuard'
 import { ensureAnonymousLogin, supabase } from '../../utils/supabase'
 
 onLoad(() => {
+  installHistoryTabGuard()
+  setHistoryTabGuard(() => {
+    if (viewMode.value !== 'scoring') return true
+    void handleSwitchTabToHistory()
+    return false
+  })
   void ensureAnonymousLogin()
+})
+
+onShow(() => {
+  const flag = uni.getStorageSync(NEED_RESET_SETUP_KEY)
+  if (flag === true || flag === 'true' || flag === 1) {
+    uni.removeStorageSync(NEED_RESET_SETUP_KEY)
+    resetScoringSession()
+    viewMode.value = 'config'
+    showLeaveTabModal.value = false
+    showQuitModal.value = false
+  }
 })
 
 const sys = uni.getSystemInfoSync()
@@ -348,6 +400,8 @@ const totalScore = ref(0)
 const practiceId = ref('')
 const isDbReady = ref(false)
 const showQuitModal = ref(false)
+const showLeaveTabModal = ref(false)
+const isPersistingLeave = ref(false)
 
 const positionLabels = [
   '左上',
@@ -481,6 +535,39 @@ function getRecordedArrowCount() {
   return fromCompleted + currentEndScores.value.length
 }
 
+function collectLocalArrows() {
+  const list: {
+    practice_id: string
+    end_index: number
+    arrow_index: number
+    position: string
+    score: number
+  }[] = []
+  const pid = practiceId.value
+  if (!pid) return list
+  for (const end of practiceData.value) {
+    end.arrows.forEach((arrow, i) => {
+      list.push({
+        practice_id: pid,
+        end_index: end.endNumber,
+        arrow_index: i,
+        position: arrow.position,
+        score: arrow.score,
+      })
+    })
+  }
+  currentEndScores.value.forEach((arrow, i) => {
+    list.push({
+      practice_id: pid,
+      end_index: currentEnd.value,
+      arrow_index: i,
+      position: arrow.position,
+      score: arrow.score,
+    })
+  })
+  return list
+}
+
 async function savePractice() {
   if (!practiceId.value) return
   const { error } = await supabase
@@ -491,6 +578,88 @@ async function savePractice() {
     uni.showToast({ title: '保存总分失败', icon: 'none' })
     console.error(error)
   }
+}
+
+/** 补写未入库箭支，并更新 practices.total_score */
+async function saveArrowsAndTotal(): Promise<boolean> {
+  if (!practiceId.value) {
+    uni.showToast({ title: '练习未就绪', icon: 'none' })
+    return false
+  }
+  const local = collectLocalArrows()
+  const { data: existing, error: fetchErr } = await supabase
+    .from('arrows')
+    .select('end_index,arrow_index')
+    .eq('practice_id', practiceId.value)
+  if (fetchErr) {
+    uni.showToast({ title: '读取箭支失败', icon: 'none' })
+    console.error(fetchErr)
+    return false
+  }
+  const keys = new Set(
+    (existing ?? []).map((row) => `${row.end_index}-${row.arrow_index}`),
+  )
+  const missing = local.filter((row) => !keys.has(`${row.end_index}-${row.arrow_index}`))
+  if (missing.length > 0) {
+    const { error: insertErr } = await supabase.from('arrows').insert(missing)
+    if (insertErr) {
+      uni.showToast({ title: '保存箭支失败', icon: 'none' })
+      console.error(insertErr)
+      return false
+    }
+  }
+  const { error: updateErr } = await supabase
+    .from('practices')
+    .update({ total_score: totalScore.value })
+    .eq('id', practiceId.value)
+  if (updateErr) {
+    uni.showToast({ title: '保存总分失败', icon: 'none' })
+    console.error(updateErr)
+    return false
+  }
+  return true
+}
+
+async function handleSwitchTabToHistory() {
+  if (showLeaveTabModal.value || isPersistingLeave.value) return
+  const count = getRecordedArrowCount()
+  if (count === 0) {
+    if (practiceId.value) {
+      const { error } = await supabase.from('practices').delete().eq('id', practiceId.value)
+      if (error) {
+        uni.showToast({ title: '清理记录失败', icon: 'none' })
+        console.error(error)
+      }
+    }
+    exitScoringToConfig()
+    navigateToHistoryTab()
+    return
+  }
+  showQuitModal.value = false
+  showLeaveTabModal.value = true
+}
+
+async function persistThenGoHistory(resetWhenBack: boolean) {
+  if (isPersistingLeave.value) return
+  isPersistingLeave.value = true
+  const ok = await saveArrowsAndTotal()
+  isPersistingLeave.value = false
+  if (!ok) return
+  showLeaveTabModal.value = false
+  if (resetWhenBack) {
+    uni.setStorageSync(NEED_RESET_SETUP_KEY, true)
+  } else {
+    uni.removeStorageSync(NEED_RESET_SETUP_KEY)
+  }
+  navigateToHistoryTab()
+}
+
+function handleLeaveTabContinueLater() {
+  void persistThenGoHistory(false)
+}
+
+function handleLeaveTabQuit() {
+  void persistThenGoHistory(true)
 }
 
 async function finishScoringAndExit() {

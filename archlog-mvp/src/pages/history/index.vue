@@ -34,7 +34,8 @@
               @tap="openDetail(item.id)"
             >
               <text class="block text-base font-semibold text-gray-900">
-                {{ item.bow_type }} · {{ item.distance }} · {{ item.target_paper }}
+                {{ bowTypeMap[item.bow_type] || item.bow_type }} · {{ item.distance }} ·
+                {{ targetPaperMap[item.target_paper] || item.target_paper }}
               </text>
               <text class="mt-1 block text-sm text-gray-700">
                 每组 {{ item.arrows_per_end }} 支
@@ -61,7 +62,8 @@
         <view v-else>
           <view class="mb-4 rounded-lg bg-white p-4 shadow">
             <text class="block text-base text-gray-900">
-              {{ practice.bow_type }} · {{ practice.distance }} · {{ practice.target_paper }}
+              {{ bowTypeMap[practice.bow_type] || practice.bow_type }} · {{ practice.distance }} ·
+              {{ targetPaperMap[practice.target_paper] || practice.target_paper }}
             </text>
             <text class="mt-1 block text-sm text-gray-700">
               每组 {{ practice.arrows_per_end }} 支
@@ -124,6 +126,7 @@
 <script setup lang="ts">
 import { onShow } from '@dcloudio/uni-app'
 import { computed, ref, watch } from 'vue'
+import { bowTypeMap, targetPaperMap } from '../../utils/dict'
 import { ensureAnonymousLogin, getCurrentUserId, supabase } from '../../utils/supabase'
 
 type PracticeRow = {

@@ -1,5 +1,10 @@
 <script setup lang="ts">
-// ArchLog 应用根组件
+import { onLaunch } from '@dcloudio/uni-app'
+import { installHistoryTabGuard } from './utils/historyTabGuard'
+
+onLaunch(() => {
+  installHistoryTabGuard()
+})
 </script>
 
 <style></style>
