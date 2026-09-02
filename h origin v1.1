@@ -1,0 +1,365 @@
+[33mtag v1.1[m
+Tagger: Wallstreet-wolf <1397447505@qq.com>
+Date:   Mon Aug 31 23:24:54 2026 +0800
+
+第一阶段 MVP 发布版本
+
+[33mcommit e91685e8902a8be468c91fa4eab77ea1bbae7569[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;33mtag: [m[1;33mv1.1[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m
+Author: Wallstreet-wolf <1397447505@qq.com>
+Date:   Thu Aug 27 12:59:03 2026 +0800
+
+    fix
+
+[1mdiff --git a/archlog-mvp/src/App.vue b/archlog-mvp/src/App.vue[m
+[1mindex f2b92f4..ad193e3 100644[m
+[1m--- a/archlog-mvp/src/App.vue[m
+[1m+++ b/archlog-mvp/src/App.vue[m
+[36m@@ -1,5 +1,10 @@[m
+ <script setup lang="ts">[m
+[31m-// ArchLog 应用根组件[m
+[32m+[m[32mimport { onLaunch } from '@dcloudio/uni-app'[m
+[32m+[m[32mimport { installHistoryTabGuard } from './utils/historyTabGuard'[m
+[32m+[m
+[32m+[m[32monLaunch(() => {[m
+[32m+[m[32m  installHistoryTabGuard()[m
+[32m+[m[32m})[m
+ </script>[m
+ [m
+ <style></style>[m
+[1mdiff --git a/archlog-mvp/src/pages/detail/index.vue b/archlog-mvp/src/pages/detail/index.vue[m
+[1mindex 2e59845..ddd67be 100644[m
+[1m--- a/archlog-mvp/src/pages/detail/index.vue[m
+[1m+++ b/archlog-mvp/src/pages/detail/index.vue[m
+[36m@@ -15,7 +15,8 @@[m
+         <view v-else>[m
+           <view class="mb-4 rounded-lg bg-white p-4 shadow">[m
+             <text class="block text-base text-gray-900">[m
+[31m-              {{ practice.bow_type }} · {{ practice.distance }} · {{ practice.target_paper }}[m
+[32m+[m[32m              {{ bowTypeMap[practice.bow_type] || practice.bow_type }} · {{ practice.distance }} ·[m
+[32m+[m[32m              {{ targetPaperMap[practice.target_paper] || practice.target_paper }}[m
+             </text>[m
+             <text class="mt-1 block text-sm text-gray-700">[m
+               每组 {{ practice.arrows_per_end }} 支[m
+[36m@@ -78,6 +79,7 @@[m
+ <script setup lang="ts">[m
+ import { onLoad } from '@dcloudio/uni-app'[m
+ import { computed, ref } from 'vue'[m
+[32m+[m[32mimport { bowTypeMap, targetPaperMap } from '../../utils/dict'[m
+ import { supabase } from '../../utils/supabase'[m
+ [m
+ const practiceId = ref('')[m
+[1mdiff --git a/archlog-mvp/src/pages/history/index.vue b/archlog-mvp/src/pages/history/index.vue[m
+[1mindex 2519a25..0c8dc1d 100644[m
+[1m--- a/archlog-mvp/src/pages/history/index.vue[m
+[1m+++ b/archlog-mvp/src/pages/history/index.vue[m
+[36m@@ -34,7 +34,8 @@[m
+               @tap="openDetail(item.id)"[m
+             >[m
+               <text class="block text-base font-semibold text-gray-900">[m
+[31m-                {{ item.bow_type }} · {{ item.distance }} · {{ item.target_paper }}[m
+[32m+[m[32m                {{ bowTypeMap[item.bow_type] || item.bow_type }} · {{ item.distance }} ·[m
+[32m+[m[32m                {{ targetPaperMap[item.target_paper] || item.target_paper }}[m
+               </text>[m
+               <text class="mt-1 block text-sm text-gray-700">[m
+                 每组 {{ item.arrows_per_end }} 支[m
+[36m@@ -61,7 +62,8 @@[m
+         <view v-else>[m
+           <view class="mb-4 rounded-lg bg-white p-4 shadow">[m
+             <text class="block text-base text-gray-900">[m
+[31m-              {{ practice.bow_type }} · {{ practice.distance }} · {{ practice.target_paper }}[m
+[32m+[m[32m              {{ bowTypeMap[practice.bow_type] || practice.bow_type }} · {{ practice.distance }} ·[m
+[32m+[m[32m              {{ targetPaperMap[practice.target_paper] || practice.target_paper }}[m
+             </text>[m
+             <text class="mt-1 block text-sm text-gray-700">[m
+               每组 {{ practice.arrows_per_end }} 支[m
+[36m@@ -124,6 +126,7 @@[m
+ <script setup lang="ts">[m
+ import { onShow } from '@dcloudio/uni-app'[m
+ import { computed, ref, watch } from 'vue'[m
+[32m+[m[32mimport { bowTypeMap, targetPaperMap } from '../../utils/dict'[m
+ import { ensureAnonymousLogin, getCurrentUserId, supabase } from '../../utils/supabase'[m
+ [m
+ type PracticeRow = {[m
+[1mdiff --git a/archlog-mvp/src/pages/setup/index.vue b/archlog-mvp/src/pages/setup/index.vue[m
+[1mindex e01141b..9fee0de 100644[m
+[1m--- a/archlog-mvp/src/pages/setup/index.vue[m
+[1m+++ b/archlog-mvp/src/pages/setup/index.vue[m
+[36m@@ -263,18 +263,70 @@[m
+         </view>[m
+       </view>[m
+     </view>[m
+[32m+[m
+[32m+[m[32m    <!-- 切到历史 Tab：已录入箭支时拦截 -->[m
+[32m+[m[32m    <view[m
+[32m+[m[32m      v-if="showLeaveTabModal"[m
+[32m+[m[32m      class="fixed inset-0 z-[9999] flex items-center justify-center bg-black bg-opacity-50"[m
+[32m+[m[32m    >[m
+[32m+[m[32m      <view class="w-4/5 rounded-lg bg-white p-6">[m
+[32m+[m[32m        <text class="mb-2 block text-lg font-semibold text-gray-900">提示</text>[m
+[32m+[m[32m        <text class="mb-6 block text-base text-gray-700">[m
+[32m+[m[32m          当前已录入 {{ getRecordedArrowCount() }} 支箭，总分为 {{ totalScore }}[m
+[32m+[m[32m        </text>[m
+[32m+[m[32m        <view class="flex justify-end space-x-3">[m
+[32m+[m[32m          <view[m
+[32m+[m[32m            class="rounded bg-gray-200 px-4 py-2 text-gray-700"[m
+[32m+[m[32m            :class="isPersistingLeave ? 'opacity-50' : ''"[m
+[32m+[m[32m            @tap="handleLeaveTabQuit"[m
+[32m+[m[32m          >[m
+[32m+[m[32m            不练了[m
+[32m+[m[32m          </view>[m
+[32m+[m[32m          <view[m
+[32m+[m[32m            class="rounded bg-blue-600 px-4 py-2 text-white"[m
+[32m+[m[32m            :class="isPersistingLeave ? 'opacity-50' : ''"[m
+[32m+[m[32m            @tap="handleLeaveTabContinueLater"[m
+[32m+[m[32m          >[m
+[32m+[m[32m            稍后继续练[m
+[32m+[m[32m          </view>[m
+[32m+[m[32m        </view>[m
+[32m+[m[32m      </view>[m
+[32m+[m[32m    </view>[m
+   </view>[m
+ </template>[m
+ [m
+ <script setup lang="ts">[m
+[31m-import { onHide, onLoad } from '@dcloudio/uni-app'[m
+[32m+[m[32mimport { onHide, onLoad, onShow } from '@dcloudio/uni-app'[m
+ import { computed, ref } from 'vue'[m
+[32m+[m[32mimport {[m
+[32m+[m[32m  NEED_RESET_SETUP_KEY,[m
+[32m+[m[32m  installHistoryTabGuard,[m
+[32m+[m[32m  navigateToHistoryTab,[m
+[32m+[m[32m  setHistoryTabGuard,[m
+[32m+[m[32m} from '../../utils/historyTabGuard'[m
+ import { ensureAnonymousLogin, supabase } from '../../utils/supabase'[m
+ [m
+ onLoad(() => {[m
+[32m+[m[32m  installHistoryTabGuard()[m
+[32m+[m[32m  setHistoryTabGuard(() => {[m
+[32m+[m[32m    if (viewMode.value !== 'scoring') return true[m
+[32m+[m[32m    void handleSwitchTabToHistory()[m
+[32m+[m[32m    return false[m
+[32m+[m[32m  })[m
+   void ensureAnonymousLogin()[m
+ })[m
+ [m
+[32m+[m[32monShow(() => {[m
+[32m+[m[32m  const flag = uni.getStorageSync(NEED_RESET_SETUP_KEY)[m
+[32m+[m[32m  if (flag === true || flag === 'true' || flag === 1) {[m
+[32m+[m[32m    uni.removeStorageSync(NEED_RESET_SETUP_KEY)[m
+[32m+[m[32m    resetScoringSession()[m
+[32m+[m[32m    viewMode.value = 'config'[m
+[32m+[m[32m    showLeaveTabModal.value = false[m
+[32m+[m[32m    showQuitModal.value = false[m
+[32m+[m[32m  }[m
+[32m+[m[32m})[m
+[32m+[m
+ const sys = uni.getSystemInfoSync()[m
+ const statusBarPx = ref(sys.statusBarHeight ?? 24)[m
+ [m
+[36m@@ -348,6 +400,8 @@[m [mconst totalScore = ref(0)[m
+ const practiceId = ref('')[m
+ const isDbReady = ref(false)[m
+ const showQuitModal = ref(false)[m
+[32m+[m[32mconst showLeaveTabModal = ref(false)[m
+[32m+[m[32mconst isPersistingLeave = ref(false)[m
+ [m
+ const positionLabels = [[m
+   '左上',[m
+[36m@@ -481,6 +535,39 @@[m [mfunction getRecordedArrowCount() {[m
+   return fromCompleted + currentEndScores.value.length[m
+ }[m
+ [m
+[32m+[m[32mfunction collectLocalArrows() {[m
+[32m+[m[32m  const list: {[m
+[32m+[m[32m    practice_id: string[m
+[32m+[m[32m    end_index: number[m
+[32m+[m[32m    arrow_index: number[m
+[32m+[m[32m    position: string[m
+[32m+[m[32m    score: number[m
+[32m+[m[32m  }[] = [][m
+[32m+[m[32m  const pid = practiceId.value[m
+[32m+[m[32m  if (!pid) return list[m
+[32m+[m[32m  for (const end of practiceData.value) {[m
+[32m+[m[32m    end.arrows.forEach((arrow, i) => {[m
+[32m+[m[32m      list.push({[m
+[32m+[m[32m        practice_id: pid,[m
+[32m+[m[32m        end_index: end.endNumber,[m
+[32m+[m[32m        arrow_index: i,[m
+[32m+[m[32m        position: arrow.position,[m
+[32m+[m[32m        score: arrow.score,[m
+[32m+[m[32m      })[m
+[32m+[m[32m    })[m
+[32m+[m[32m  }[m
+[32m+[m[32m  currentEndScores.value.forEach((arrow, i) => {[m
+[32m+[m[32m    list.push({[m
+[32m+[m[32m      practice_id: pid,[m
+[32m+[m[32m      end_index: currentEnd.value,[m
+[32m+[m[32m      arrow_index: i,[m
+[32m+[m[32m      position: arrow.position,[m
+[32m+[m[32m      score: arrow.score,[m
+[32m+[m[32m    })[m
+[32m+[m[32m  })[m
+[32m+[m[32m  return list[m
+[32m+[m[32m}[m
+[32m+[m
+ async function savePractice() {[m
+   if (!practiceId.value) return[m
+   const { error } = await supabase[m
+[36m@@ -493,6 +580,88 @@[m [masync function savePractice() {[m
+   }[m
+ }[m
+ [m
+[32m+[m[32m/** 补写未入库箭支，并更新 practices.total_score */[m
+[32m+[m[32masync function saveArrowsAndTotal(): Promise<boolean> {[m
+[32m+[m[32m  if (!practiceId.value) {[m
+[32m+[m[32m    uni.showToast({ title: '练习未就绪', icon: 'none' })[m
+[32m+[m[32m    return false[m
+[32m+[m[32m  }[m
+[32m+[m[32m  const local = collectLocalArrows()[m
+[32m+[m[32m  const { data: existing, error: fetchErr } = await supabase[m
+[32m+[m[32m    .from('arrows')[m
+[32m+[m[32m    .select('end_index,arrow_index')[m
+[32m+[m[32m    .eq('practice_id', practiceId.value)[m
+[32m+[m[32m  if (fetchErr) {[m
+[32m+[m[32m    uni.showToast({ title: '读取箭支失败', icon: 'none' })[m
+[32m+[m[32m    console.error(fetchErr)[m
+[32m+[m[32m    return false[m
+[32m+[m[32m  }[m
+[32m+[m[32m  const keys = new Set([m
+[32m+[m[32m    (existing ?? []).map((row) => `${row.end_index}-${row.arrow_index}`),[m
+[32m+[m[32m  )[m
+[32m+[m[32m  const missing = local.filter((row) => !keys.has(`${row.end_index}-${row.arrow_index}`))[m
+[32m+[m[32m  if (missing.length > 0) {[m
+[32m+[m[32m    const { error: insertErr } = await supabase.from('arrows').insert(missing)[m
+[32m+[m[32m    if (insertErr) {[m
+[32m+[m[32m      uni.showToast({ title: '保存箭支失败', icon: 'none' })[m
+[32m+[m[32m      console.error(insertErr)[m
+[32m+[m[32m      return false[m
+[32m+[m[32m    }[m
+[32m+[m[32m  }[m
+[32m+[m[32m  const { error: updateErr } = await supabase[m
+[32m+[m[32m    .from('practices')[m
+[32m+[m[32m    .update({ total_score: totalScore.value })[m
+[32m+[m[32m    .eq('id', practiceId.value)[m
+[32m+[m[32m  if (updateErr) {[m
+[32m+[m[32m    uni.showToast({ title: '保存总分失败', icon: 'none' })[m
+[32m+[m[32m    console.error(updateErr)[m
+[32m+[m[32m    return false[m
+[32m+[m[32m  }[m
+[32m+[m[32m  return true[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32masync function handleSwitchTabToHistory() {[m
+[32m+[m[32m  if (showLeaveTabModal.value || isPersistingLeave.value) return[m
+[32m+[m[32m  const count = getRecordedArrowCount()[m
+[32m+[m[32m  if (count === 0) {[m
+[32m+[m[32m    if (practiceId.value) {[m
+[32m+[m[32m      const { error } = await supabase.from('practices').delete().eq('id', practiceId.value)[m
+[32m+[m[32m      if (error) {[m
+[32m+[m[32m        uni.showToast({ title: '清理记录失败', icon: 'none' })[m
+[32m+[m[32m        console.error(error)[m
+[32m+[m[32m      }[m
+[32m+[m[32m    }[m
+[32m+[m[32m    exitScoringToConfig()[m
+[32m+[m[32m    navigateToHistoryTab()[m
+[32m+[m[32m    return[m
+[32m+[m[32m  }[m
+[32m+[m[32m  showQuitModal.value = false[m
+[32m+[m[32m  showLeaveTabModal.value = true[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32masync function persistThenGoHistory(resetWhenBack: boolean) {[m
+[32m+[m[32m  if (isPersistingLeave.value) return[m
+[32m+[m[32m  isPersistingLeave.value = true[m
+[32m+[m[32m  const ok = await saveArrowsAndTotal()[m
+[32m+[m[32m  isPersistingLeave.value = false[m
+[32m+[m[32m  if (!ok) return[m
+[32m+[m[32m  showLeaveTabModal.value = false[m
+[32m+[m[32m  if (resetWhenBack) {[m
+[32m+[m[32m    uni.setStorageSync(NEED_RESET_SETUP_KEY, true)[m
+[32m+[m[32m  } else {[m
+[32m+[m[32m    uni.removeStorageSync(NEED_RESET_SETUP_KEY)[m
+[32m+[m[32m  }[m
+[32m+[m[32m  navigateToHistoryTab()[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mfunction handleLeaveTabContinueLater() {[m
+[32m+[m[32m  void persistThenGoHistory(false)[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mfunction handleLeaveTabQuit() {[m
+[32m+[m[32m  void persistThenGoHistory(true)[m
+[32m+[m[32m}[m
+[32m+[m
+ async function finishScoringAndExit() {[m
+   if (!practiceId.value) {[m
+     exitScoringToConfig()[m
+[1mdiff --git a/archlog-mvp/src/utils/dict.ts b/archlog-mvp/src/utils/dict.ts[m
+[1mnew file mode 100644[m
+[1mindex 0000000..4d418dc[m
+[1m--- /dev/null[m
+[1m+++ b/archlog-mvp/src/utils/dict.ts[m
+[36m@@ -0,0 +1,15 @@[m
+[32m+[m[32mexport const bowTypeMap: Record<string, string> = {[m
+[32m+[m[32m  recurve: '反曲弓',[m
+[32m+[m[32m  compound: '复合弓',[m
+[32m+[m[32m  traditional: '传统弓',[m
+[32m+[m[32m  barebow: '光弓',[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mexport const targetPaperMap: Record<string, string> = {[m
+[32m+[m[32m  '80-half': '80半环',[m
+[32m+[m[32m  '40-full': '40全环',[m
+[32m+[m[32m  triple: '三联靶',[m
+[32m+[m[32m  '60-full': '60全环',[m
+[32m+[m[32m  '80-full': '80全环',[m
+[32m+[m[32m  '122-full': '122全环',[m
+[32m+[m[32m}[m
+[1mdiff --git a/archlog-mvp/src/utils/historyTabGuard.ts b/archlog-mvp/src/utils/historyTabGuard.ts[m
+[1mnew file mode 100644[m
+[1mindex 0000000..bef5fa8[m
+[1m--- /dev/null[m
+[1m+++ b/archlog-mvp/src/utils/historyTabGuard.ts[m
+[36m@@ -0,0 +1,42 @@[m
+[32m+[m[32m/** 切到历史 Tab 时是否跳过拦截（手动放行后的二次 switchTab） */[m
+[32m+[m[32mlet skipGuard = false[m
+[32m+[m[32mlet installed = false[m
+[32m+[m
+[32m+[m[32mexport const NEED_RESET_SETUP_KEY = 'needResetSetup'[m
+[32m+[m
+[32m+[m[32mtype GuardHandler = () => boolean[m
+[32m+[m
+[32m+[m[32mlet handler: GuardHandler | null = null[m
+[32m+[m
+[32m+[m[32mexport function setHistoryTabGuard(fn: GuardHandler | null) {[m
+[32m+[m[32m  handler = fn[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mexport function navigateToHistoryTab() {[m
+[32m+[m[32m  skipGuard = true[m
+[32m+[m[32m  uni.switchTab({[m
+[32m+[m[32m    url: '/pages/history/index',[m
+[32m+[m[32m    complete() {[m
+[32m+[m[32m      skipGuard = false[m
+[32m+[m[32m    },[m
+[32m+[m[32m  })[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mfunction isHistoryTabUrl(url: string) {[m
+[32m+[m[32m  return url.includes('pages/history/index')[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mexport function installHistoryTabGuard() {[m
+[32m+[m[32m  if (installed) return[m
+[32m+[m[32m  installed = true[m
+[32m+[m[32m  uni.addInterceptor('switchTab', {[m
+[32m+[m[32m    invoke(args: { url?: string }) {[m
+[32m+[m[32m      if (skipGuard) return[m
+[32m+[m[32m      const url = String(args?.url ?? '')[m
+[32m+[m[32m      if (!isHistoryTabUrl(url)) return[m
+[32m+[m[32m      if (!handler) return[m
+[32m+[m[32m      const allow = handler()[m
+[32m+[m[32m      if (allow === false) return false[m
+[32m+[m[32m    },[m
+[32m+[m[32m  })[m
+[32m+[m[32m}[m
