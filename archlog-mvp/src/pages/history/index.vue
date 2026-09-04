@@ -111,7 +111,7 @@
                     <td class="border-r border-b border-gray-200 px-3 py-2">
                       {{ arrow.position }}
                     </td>
-                    <td class="border-b border-gray-200 px-3 py-2">{{ arrow.score }}</td>
+                    <td class="border-b border-gray-200 px-3 py-2">{{ arrow.ring ?? arrow.score }}</td>
                   </tr>
                 </tbody>
               </table>

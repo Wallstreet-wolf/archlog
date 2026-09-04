@@ -134,7 +134,16 @@
       <view class="box-border flex min-h-0 flex-1 flex-col p-4">
         <!-- 顶部状态栏 -->
         <view class="mb-4 shrink-0 space-y-1">
-          <text class="block text-center text-base font-medium text-gray-900">
+          <text
+            v-if="currentEndCompleted"
+            class="block text-center text-base font-medium text-gray-900"
+          >
+            第 {{ currentEnd }} 组 已完成
+          </text>
+          <text
+            v-else
+            class="block text-center text-base font-medium text-gray-900"
+          >
             第 {{ currentEnd }} 组 / 第 {{ currentArrow }} 支
           </text>
           <text class="block text-center text-sm text-gray-600">
@@ -381,7 +390,7 @@ const targetPaper = ref<(typeof targetPaperOptions)[number]['id']>('80-half')
 const distance = ref<(typeof distanceOptions)[number]['id']>('18')
 const arrowsPerEnd = ref<(typeof arrowsPerEndOptions)[number]['id']>('6')
 
-type ArrowEntry = { position: string; score: number; ring?: string }
+type ArrowEntry = { position: string; score: number; ring: string }
 type CompletedEnd = { endNumber: number; arrows: ArrowEntry[]; total: number }
 
 const scoringBowType = ref('')
@@ -390,6 +399,7 @@ const scoringDistance = ref('')
 
 const currentEnd = ref(1)
 const currentArrow = ref(1)
+const currentEndCompleted = ref(false)
 const maxArrows = ref(0)
 const selectedPosition = ref('')
 const selectedScore = ref('')
@@ -461,6 +471,7 @@ function resetScoringSession() {
   scoringDistance.value = ''
   currentEnd.value = 1
   currentArrow.value = 1
+  currentEndCompleted.value = false
   maxArrows.value = 0
   selectedPosition.value = ''
   selectedScore.value = ''
@@ -542,6 +553,7 @@ function collectLocalArrows() {
     arrow_index: number
     position: string
     score: number
+    ring: string
   }[] = []
   const pid = practiceId.value
   if (!pid) return list
@@ -553,6 +565,7 @@ function collectLocalArrows() {
         arrow_index: i,
         position: arrow.position,
         score: arrow.score,
+        ring: arrow.ring,
       })
     })
   }
@@ -563,6 +576,7 @@ function collectLocalArrows() {
       arrow_index: i,
       position: arrow.position,
       score: arrow.score,
+      ring: arrow.ring,
     })
   })
   return list
@@ -696,6 +710,7 @@ async function handleAddArrow() {
     arrow_index: currentArrow.value - 1,
     position: selectedPosition.value,
     score,
+    ring,
   })
   if (error) {
     uni.showToast({ title: '同步箭支失败', icon: 'none' })
@@ -705,14 +720,16 @@ async function handleAddArrow() {
   currentEndScores.value.push({
     position: selectedPosition.value,
     score,
-    ...(ring === 'X' ? { ring: 'X' } : {}),
+    ring,
   })
   totalScore.value += score
   selectedPosition.value = ''
   selectedScore.value = ''
-  currentArrow.value += 1
-  if (currentArrow.value > maxArrows.value) {
+  if (currentEndScores.value.length >= maxArrows.value) {
+    currentEndCompleted.value = true
     handleEndEnd()
+  } else {
+    currentArrow.value += 1
   }
 }
 
@@ -752,6 +769,7 @@ function handleEndEnd() {
       if (res.confirm) {
         currentEndScores.value = []
         currentArrow.value = 1
+        currentEndCompleted.value = false
         currentEnd.value += 1
         selectedPosition.value = ''
         selectedScore.value = ''
