@@ -15,20 +15,6 @@
       }
     },
     {
-      "path": "pages/scoring/index",
-      "style": {
-        "navigationBarTitleText": "计分",
-        "navigationStyle": "custom"
-      }
-    },
-    {
-      "path": "pages/detail/index",
-      "style": {
-        "navigationStyle": "custom",
-        "navigationBarTitleText": "练习详情"
-      }
-    },
-    {
       "path": "pages/index/index",
       "style": {
         "navigationBarTitleText": "ArchLog"
