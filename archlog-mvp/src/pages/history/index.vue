@@ -12,11 +12,97 @@
       <text class="text-base font-medium">{{
         viewMode === 'list' ? '练习记录' : '练习详情'
       }}</text>
-      <view class="w-12"></view>
+      <view class="flex w-12 items-center justify-end">
+        <view
+          v-if="viewMode === 'list'"
+          class="relative flex items-center justify-center active:opacity-70"
+          @tap="isFilterPanelOpen = !isFilterPanelOpen"
+        >
+          <text class="text-sm text-blue-600">筛选</text>
+          <view
+            v-if="hasActiveFilter"
+            class="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-red-500"
+          ></view>
+        </view>
+      </view>
     </view>
 
     <!-- 列表视图 -->
     <template v-if="viewMode === 'list'">
+      <!-- 筛选面板 -->
+      <view v-show="isFilterPanelOpen" class="box-border shrink-0 px-4 pb-3">
+        <view class="mb-2 flex items-center justify-between">
+          <text class="text-sm font-medium text-gray-800">筛选条件</text>
+          <text
+            v-if="hasActiveFilter"
+            class="text-sm text-blue-600 active:opacity-70"
+            @tap="clearFilters"
+          >
+            清除筛选
+          </text>
+        </view>
+
+        <!-- 弓种 -->
+        <view class="mb-3">
+          <text class="mb-1.5 block text-xs font-medium text-gray-600">弓种</text>
+          <view class="flex flex-wrap gap-2">
+            <view
+              v-for="opt in bowFilterOptions"
+              :key="opt"
+              class="min-h-[40px] shrink-0 rounded-lg px-3.5 py-1.5 text-sm font-medium active:opacity-90"
+              :class="
+                selectedBowType === opt
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'bg-gray-100 text-gray-700'
+              "
+              @tap="selectedBowType = opt"
+            >
+              {{ opt === 'all' ? '全部' : bowTypeMap[opt] || opt }}
+            </view>
+          </view>
+        </view>
+
+        <!-- 距离 -->
+        <view class="mb-3">
+          <text class="mb-1.5 block text-xs font-medium text-gray-600">距离</text>
+          <view class="flex flex-wrap gap-2">
+            <view
+              v-for="opt in distanceFilterOptions"
+              :key="opt"
+              class="min-h-[40px] shrink-0 rounded-lg px-3.5 py-1.5 text-sm font-medium active:opacity-90"
+              :class="
+                selectedDistance === opt
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'bg-gray-100 text-gray-700'
+              "
+              @tap="selectedDistance = opt"
+            >
+              {{ opt === 'all' ? '全部' : opt }}
+            </view>
+          </view>
+        </view>
+
+        <!-- 靶纸 -->
+        <view>
+          <text class="mb-1.5 block text-xs font-medium text-gray-600">靶纸</text>
+          <view class="flex flex-wrap gap-2">
+            <view
+              v-for="opt in targetPaperFilterOptions"
+              :key="opt"
+              class="min-h-[40px] shrink-0 rounded-lg px-3.5 py-1.5 text-sm font-medium active:opacity-90"
+              :class="
+                selectedTargetPaper === opt
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'bg-gray-100 text-gray-700'
+              "
+              @tap="selectedTargetPaper = opt"
+            >
+              {{ opt === 'all' ? '全部' : targetPaperMap[opt] || opt }}
+            </view>
+          </view>
+        </view>
+      </view>
+
       <scroll-view scroll-y class="box-border min-h-0 flex-1">
         <view class="box-border p-4 pb-8">
           <view
@@ -26,9 +112,22 @@
             <text class="text-base">暂无练习记录</text>
           </view>
 
+          <view
+            v-else-if="filteredPracticesList.length === 0"
+            class="flex flex-col items-center justify-center py-24 text-gray-500"
+          >
+            <text class="text-base">暂无符合条件的记录</text>
+            <view
+              class="mt-4 rounded-lg bg-blue-600 px-5 py-2 text-sm font-medium text-white active:opacity-90"
+              @tap="clearFilters"
+            >
+              清除筛选
+            </view>
+          </view>
+
           <view v-else>
             <view
-              v-for="item in practicesList"
+              v-for="item in filteredPracticesList"
               :key="item.id"
               class="mb-3 rounded-lg bg-white p-4 shadow"
               @tap="openDetail(item.id)"
@@ -143,6 +242,58 @@ const viewMode = ref<'list' | 'detail'>('list')
 const currentPracticeId = ref('')
 
 const practicesList = ref<PracticeRow[]>([])
+
+const selectedBowType = ref<string>('all')
+const selectedDistance = ref<string>('all')
+const selectedTargetPaper = ref<string>('all')
+
+const isFilterPanelOpen = ref(false)
+
+const hasActiveFilter = computed(
+  () =>
+    selectedBowType.value !== 'all' ||
+    selectedDistance.value !== 'all' ||
+    selectedTargetPaper.value !== 'all',
+)
+
+const bowFilterOptions = computed(() => {
+  const used = new Set(practicesList.value.map((p) => p.bow_type).filter((v) => v !== ''))
+  return ['all', ...Object.keys(bowTypeMap).filter((key) => used.has(key))]
+})
+
+const distanceFilterOptions = computed(() => {
+  const distances = practicesList.value
+    .map((p) => p.distance)
+    .filter((d) => d != null && d !== '')
+  const unique = [...new Set(distances)].sort((a, b) => {
+    const na = Number(a)
+    const nb = Number(b)
+    if (Number.isFinite(na) && Number.isFinite(nb)) return na - nb
+    return String(a).localeCompare(String(b))
+  })
+  return ['all', ...unique]
+})
+
+const targetPaperFilterOptions = computed(() => {
+  const used = new Set(practicesList.value.map((p) => p.target_paper).filter((v) => v !== ''))
+  return ['all', ...Object.keys(targetPaperMap).filter((key) => used.has(key))]
+})
+
+const filteredPracticesList = computed(() => {
+  return practicesList.value.filter((item) => {
+    const bowOk = selectedBowType.value === 'all' || item.bow_type === selectedBowType.value
+    const distOk = selectedDistance.value === 'all' || item.distance === selectedDistance.value
+    const paperOk =
+      selectedTargetPaper.value === 'all' || item.target_paper === selectedTargetPaper.value
+    return bowOk && distOk && paperOk
+  })
+})
+
+function clearFilters() {
+  selectedBowType.value = 'all'
+  selectedDistance.value = 'all'
+  selectedTargetPaper.value = 'all'
+}
 
 const practice = ref<any>(null)
 const arrows = ref<any[]>([])
