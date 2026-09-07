@@ -252,6 +252,25 @@
       </view>
     </view>
 
+    <!-- 组完成悬浮按钮 -->
+    <view
+      v-if="currentEndCompleted"
+      class="pointer-events-none fixed left-4 right-4 top-1/2 z-50 flex -translate-y-1/2 justify-between"
+    >
+      <view
+        class="pointer-events-auto rounded-full bg-gray-700 px-4 py-3 text-sm font-medium text-white shadow-lg active:opacity-80"
+        @tap="void finishScoringAndExit()"
+      >
+        结束练习
+      </view>
+      <view
+        class="pointer-events-auto rounded-full bg-blue-600 px-4 py-3 text-sm font-medium text-white shadow-lg active:opacity-80"
+        @tap="continueToNextEnd"
+      >
+        再练一组
+      </view>
+    </view>
+
     <!-- 退出弹窗：根节点末尾，避免被计分区 overflow 裁剪 -->
     <view
       v-if="showQuitModal"
@@ -694,6 +713,7 @@ async function finishScoringAndExit() {
 }
 
 async function handleAddArrow() {
+  if (currentEndCompleted.value) return
   if (!selectedPosition.value || !selectedScore.value) {
     uni.showToast({ title: '请选择位置和环值', icon: 'none' })
     return
@@ -726,8 +746,7 @@ async function handleAddArrow() {
   selectedPosition.value = ''
   selectedScore.value = ''
   if (currentEndScores.value.length >= maxArrows.value) {
-    currentEndCompleted.value = true
-    handleEndEnd()
+    completeCurrentEnd()
   } else {
     currentArrow.value += 1
   }
@@ -752,31 +771,22 @@ onHide(() => {
   }
 })
 
-function handleEndEnd() {
+function completeCurrentEnd() {
   const total = currentEndScores.value.reduce((sum, item) => sum + item.score, 0)
-  const endNum = currentEnd.value
   practiceData.value.push({
-    endNumber: endNum,
+    endNumber: currentEnd.value,
     arrows: currentEndScores.value.map((a) => ({ ...a })),
     total,
   })
-  uni.showModal({
-    title: '提示',
-    content: `第 ${endNum} 组完成！总计 ${total} 环`,
-    confirmText: '继续下一组',
-    cancelText: '结束练习',
-    success(res) {
-      if (res.confirm) {
-        currentEndScores.value = []
-        currentArrow.value = 1
-        currentEndCompleted.value = false
-        currentEnd.value += 1
-        selectedPosition.value = ''
-        selectedScore.value = ''
-      } else {
-        void finishScoringAndExit()
-      }
-    },
-  })
+  currentEndCompleted.value = true
+}
+
+function continueToNextEnd() {
+  currentEndScores.value = []
+  currentArrow.value = 1
+  currentEndCompleted.value = false
+  currentEnd.value += 1
+  selectedPosition.value = ''
+  selectedScore.value = ''
 }
 </script>
