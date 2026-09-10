@@ -560,9 +560,13 @@ function toggleScore(score: string) {
   selectedScore.value = selectedScore.value === score ? '' : score
 }
 
-function getRecordedArrowCount() {
+function countTotalArrows() {
   const fromCompleted = practiceData.value.reduce((sum, end) => sum + end.arrows.length, 0)
   return fromCompleted + currentEndScores.value.length
+}
+
+function getRecordedArrowCount() {
+  return countTotalArrows()
 }
 
 function collectLocalArrows() {
@@ -772,16 +776,16 @@ onHide(() => {
 })
 
 function completeCurrentEnd() {
+  currentEndCompleted.value = true
+}
+
+function continueToNextEnd() {
   const total = currentEndScores.value.reduce((sum, item) => sum + item.score, 0)
   practiceData.value.push({
     endNumber: currentEnd.value,
     arrows: currentEndScores.value.map((a) => ({ ...a })),
     total,
   })
-  currentEndCompleted.value = true
-}
-
-function continueToNextEnd() {
   currentEndScores.value = []
   currentArrow.value = 1
   currentEndCompleted.value = false
